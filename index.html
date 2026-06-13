@@ -105,6 +105,13 @@
   .panel .ph{font-size:12px;color:var(--muted);margin:0 0 14px}
   .chart-box{position:relative;height:340px}
   .chart-box.small{height:300px}
+  .cap{
+    margin:14px 0 0;padding:12px 14px;background:#fff;
+    border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.65;color:#3a3527;
+  }
+  .cap b{color:var(--ink)}
+  .cap .read{color:var(--teal);font-weight:700}
+  .cap .trap{color:var(--warn);font-weight:700}
 
   /* ---- teaching prompt ---- */
   .teach{
@@ -164,17 +171,24 @@
   <div class="status" id="status"></div>
 
   <section class="cards" id="cards"></section>
+  <p class="cap" style="max-width:none"><b>KPI 數字卡：</b>每張卡顯示該國在焦點年份的數值，下方的 ▲▼ 是相對前一年的變化。<span class="read">怎麼讀：</span>數字看「水準」、箭頭看「動能」——兩者要一起看。<span class="trap">小心：</span>若焦點年缺值，卡片會自動退回最近一年並以紅字標出年份，比較時要注意年份是否一致。</p>
 
   <section class="grid2">
     <div class="panel">
       <h2>趨勢比較</h2>
       <p class="ph">同一指標、不同國家，隨時間的變化（時間序列）</p>
       <div class="chart-box"><canvas id="lineChart"></canvas></div>
+      <p class="cap"><b>這是什麼：</b>每一條線是一個國家，橫軸是年份、縱軸是指標值。<br>
+      <span class="read">怎麼讀：</span>看「斜率」——線往上代表成長、往下代表衰退，斜率越陡變化越快。線交叉的那一年，代表兩國在該指標上「黃金交叉／死亡交叉」。<br>
+      <span class="trap">小心：</span>縱軸若不從 0 開始，會把微小差距放大成戲劇性落差；資料缺漏處線會直接連過去（spanGaps），別誤以為中間沒有起伏。</p>
     </div>
     <div class="panel">
       <h2>焦點年份排名</h2>
       <p class="ph">在你選定的年份，各國表現的橫向比較</p>
       <div class="chart-box small"><canvas id="barChart"></canvas></div>
+      <p class="cap"><b>這是什麼：</b>把焦點年份各國的數值由大到小排成橫條，一眼看出高下。<br>
+      <span class="read">怎麼讀：</span>條越長值越大；橫向長條特別適合國名較長、或項目較多時閱讀。<br>
+      <span class="trap">小心：</span>排名只呈現「那一年」的快照，拉動上方年份滑桿會重新排序——名次會隨年份改變，單一年份的冠軍不代表長期領先。</p>
     </div>
   </section>
 
@@ -183,11 +197,17 @@
       <h2>相關性 · 散布圖</h2>
       <p class="ph">主要指標（X 軸）對上對照指標（Y 軸）—— 兩者是否相關？相關不代表因果。</p>
       <div class="chart-box"><canvas id="scatterChart"></canvas></div>
+      <p class="cap"><b>這是什麼：</b>每個點是一個國家，橫軸＝主要指標、縱軸＝對照指標。用來檢視兩個 KPI 之間有沒有關係。<br>
+      <span class="read">怎麼讀：</span>點若大致排成一條由左下往右上的斜線，代表「正相關」；左上往右下則是「負相關」；散成一團沒方向，代表「沒什麼關係」。<br>
+      <span class="trap">小心：<b>相關不等於因果</b></span>。兩指標一起變動，可能是互為因果、也可能背後有第三個共同原因。換上方的「對照指標」可以試不同組合。</p>
     </div>
     <div class="panel">
       <h2>三維度 · 泡泡圖</h2>
       <p class="ph">X＝主要指標、Y＝對照指標、泡泡大小＝人口。一張圖能塞多少維度而不過載？</p>
       <div class="chart-box small"><canvas id="bubbleChart"></canvas></div>
+      <p class="cap"><b>這是什麼：</b>散布圖再加一個維度——泡泡的<b>大小代表人口</b>。一張圖同時呈現三個變數。<br>
+      <span class="read">怎麼讀：</span>位置看兩個指標、面積看人口規模。大泡泡若落在「不利」的位置，代表受影響的人數很多，政策意義更大。<br>
+      <span class="trap">小心：</span>人眼對「面積」的判斷比「長度」差，泡泡大小只適合看大概、不適合精確比較；維度塞太多也會讓圖變難讀。</p>
     </div>
   </section>
 
@@ -196,11 +216,17 @@
       <h2>年增率 · 變化型 KPI</h2>
       <p class="ph">焦點年份相對前一年的成長率（%）。有時「變化」比「水準」更能說故事。</p>
       <div class="chart-box small"><canvas id="growthChart"></canvas></div>
+      <p class="cap"><b>這是什麼：</b>不看絕對數值，改看焦點年份相對前一年的<b>成長率（%）</b>。綠色為正成長、紅色為負成長。<br>
+      <span class="read">怎麼讀：</span>條越長變化越劇烈；同一張圖能看出誰在加速、誰在收縮。基期小的國家成長率容易偏高，要留意。<br>
+      <span class="trap">小心：</span>成長率高不代表規模大——一個小經濟體成長 10%，增量可能還不如大經濟體成長 1%。「變化」與「水準」要搭配著看。</p>
     </div>
     <div class="panel">
       <h2>分布 · 盒鬚圖</h2>
       <p class="ph">每個國家近 20 年的數值分布（中位數、四分位、離群值）—— 看見「平均」藏起來的東西。</p>
       <div class="chart-box small"><canvas id="boxChart"></canvas></div>
+      <p class="cap"><b>這是什麼：</b>每個國家近 20 年所有數值的<b>分布</b>。盒子是中間 50%（第一到第三四分位），盒中的線是中位數，鬚線延伸到典型範圍，盒外的點是離群值。<br>
+      <span class="read">怎麼讀：</span>盒子越高代表這些年波動越大、越穩定的國家盒子越扁；中位數的位置看「典型值」落在哪。<br>
+      <span class="trap">小心：</span>兩國的平均值可能一樣，但分布天差地遠——盒鬚圖正是用來揭露「平均數藏起來的故事」。需要至少 4 個年度資料才會繪製。</p>
     </div>
   </section>
 
