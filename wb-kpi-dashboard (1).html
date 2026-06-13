@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世界銀行 KPI 教學儀表板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.5/build/index.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0f1b2d;        /* deep navy ink */
+    --paper:#f3efe6;      /* warm parchment */
+    --panel:#fbf9f4;      /* lighter panel */
+    --line:#d8cfbd;       /* hairline */
+    --brass:#b07a2c;      /* brass accent */
+    --teal:#1f6f6b;       /* secondary accent */
+    --muted:#6b6557;
+    --good:#2f7d4f;
+    --warn:#b03a2e;
+    --c1:#1f6f6b; --c2:#b07a2c; --c3:#9b3b6e; --c4:#2c5d8f;
+    --c5:#7a7d2c; --c6:#8a5a2b; --c7:#4a4e69;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 20px 80px}
+
+  /* ---- masthead ---- */
+  header.mast{
+    border-bottom:2px solid var(--ink);
+    padding-bottom:14px;margin-bottom:8px;
+  }
+  .eyebrow{
+    font-size:12px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--brass);font-weight:700;margin-bottom:6px;
+  }
+  h1{
+    font-family:"Noto Serif TC",Georgia,serif;
+    font-weight:700;font-size:clamp(28px,4.4vw,46px);
+    margin:0;letter-spacing:-.01em;line-height:1.05;
+  }
+  .sub{color:var(--muted);font-size:14px;margin-top:8px;max-width:62ch}
+  .src{font-size:12px;color:var(--muted);margin-top:6px}
+  .src a{color:var(--teal)}
+
+  /* ---- controls ---- */
+  .controls{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:16px;margin:22px 0 10px;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:18px;
+  }
+  .ctl label{display:block;font-size:12px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:7px}
+  select{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;
+    background:#fff;color:var(--ink);font-size:14px;font-family:inherit;
+  }
+  .countries{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{
+    border:1px solid var(--line);background:#fff;color:var(--muted);
+    padding:6px 11px;border-radius:999px;font-size:13px;cursor:pointer;
+    transition:all .12s;user-select:none;
+  }
+  .chip[aria-pressed="true"]{
+    background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600;
+  }
+  .yearrow{display:flex;align-items:center;gap:10px}
+  .yearrow input[type=range]{flex:1;accent-color:var(--brass)}
+  .yearval{font-variant-numeric:tabular-nums;font-weight:700;min-width:42px;text-align:right}
+
+  /* ---- KPI cards ---- */
+  .indicator-meaning{
+    background:var(--panel);border-left:4px solid var(--brass);
+    padding:12px 16px;margin:18px 0;border-radius:0 8px 8px 0;font-size:14px;color:#3a3527;
+  }
+  .indicator-meaning b{color:var(--ink)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:18px 0}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:16px;position:relative;overflow:hidden;
+  }
+  .card .cflag{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:6px}
+  .card .cval{font-family:"Noto Serif TC",serif;font-size:26px;font-weight:700;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .card .cunit{font-size:12px;color:var(--muted);margin-top:2px}
+  .card .ctrend{font-size:13px;margin-top:8px;font-weight:600;display:flex;align-items:center;gap:5px}
+  .ctrend.up{color:var(--good)} .ctrend.down{color:var(--warn)} .ctrend.flat{color:var(--muted)}
+  .card .bar{position:absolute;left:0;top:0;bottom:0;width:4px}
+
+  /* ---- chart areas ---- */
+  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;margin-top:8px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;
+  }
+  .panel h2{
+    font-family:"Noto Serif TC",serif;font-size:18px;margin:0 0 4px;
+  }
+  .panel .ph{font-size:12px;color:var(--muted);margin:0 0 14px}
+  .chart-box{position:relative;height:340px}
+  .chart-box.small{height:300px}
+
+  /* ---- teaching prompt ---- */
+  .teach{
+    margin-top:22px;border:1px dashed var(--teal);border-radius:10px;
+    padding:18px 20px;background:#f0f5f4;
+  }
+  .teach h3{margin:0 0 10px;font-size:15px;color:var(--teal);
+    letter-spacing:.08em;text-transform:uppercase}
+  .teach ul{margin:0;padding-left:20px}
+  .teach li{margin:7px 0;font-size:14.5px;color:#244}
+  .teach .q{font-weight:700;color:var(--ink)}
+
+  .status{font-size:13px;color:var(--muted);margin:12px 2px;min-height:18px}
+  .err{color:var(--warn);font-weight:600}
+  .loading{display:inline-block;width:13px;height:13px;border:2px solid var(--line);
+    border-top-color:var(--brass);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">World Bank Open Data · 即時資料</div>
+    <h1>全球發展 KPI 儀表板</h1>
+    <p class="sub">這是一個教學用的關鍵績效指標（KPI）儀表板。所有數據都是在你的瀏覽器中，即時向世界銀行官方開放資料 API 抓取的真實數據——你可以自由切換國家、指標與年份，觀察數字背後的故事。</p>
+    <p class="src">資料來源：<a href="https://data.worldbank.org" target="_blank" rel="noopener">World Bank Open Data</a>（CC BY 4.0）· 透過 <code>api.worldbank.org/v2</code> 即時擷取</p>
+  </header>
+
+  <section class="controls">
+    <div class="ctl">
+      <label for="indSel">主要指標（KPI）</label>
+      <select id="indSel"></select>
+    </div>
+    <div class="ctl">
+      <label for="indSel2">對照指標（散布／泡泡圖的 Y 軸）</label>
+      <select id="indSel2"></select>
+    </div>
+    <div class="ctl">
+      <label>選擇國家／經濟體（可多選）</label>
+      <div class="countries" id="countryChips"></div>
+    </div>
+    <div class="ctl">
+      <label for="yearSel">焦點年份（用於卡片與長條圖）</label>
+      <div class="yearrow">
+        <input type="range" id="yearSel" min="2000" max="2023" value="2023" step="1">
+        <span class="yearval" id="yearVal">2023</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="indicator-meaning" id="meaning"></div>
+
+  <div class="status" id="status"></div>
+
+  <section class="cards" id="cards"></section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>趨勢比較</h2>
+      <p class="ph">同一指標、不同國家，隨時間的變化（時間序列）</p>
+      <div class="chart-box"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>焦點年份排名</h2>
+      <p class="ph">在你選定的年份，各國表現的橫向比較</p>
+      <div class="chart-box small"><canvas id="barChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>相關性 · 散布圖</h2>
+      <p class="ph">主要指標（X 軸）對上對照指標（Y 軸）—— 兩者是否相關？相關不代表因果。</p>
+      <div class="chart-box"><canvas id="scatterChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>三維度 · 泡泡圖</h2>
+      <p class="ph">X＝主要指標、Y＝對照指標、泡泡大小＝人口。一張圖能塞多少維度而不過載？</p>
+      <div class="chart-box small"><canvas id="bubbleChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>年增率 · 變化型 KPI</h2>
+      <p class="ph">焦點年份相對前一年的成長率（%）。有時「變化」比「水準」更能說故事。</p>
+      <div class="chart-box small"><canvas id="growthChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>分布 · 盒鬚圖</h2>
+      <p class="ph">每個國家近 20 年的數值分布（中位數、四分位、離群值）—— 看見「平均」藏起來的東西。</p>
+      <div class="chart-box small"><canvas id="boxChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="teach">
+    <h3>課堂討論題 · KPI 怎麼判讀</h3>
+    <ul id="teachList"></ul>
+  </section>
+
+  <footer>
+    教學用途。數據由世界銀行更新，部分國家／年份可能缺值（圖表會自動跳過）。<br>
+    <b>＊台灣（TWN）</b>：世界銀行明確說明台灣未被列為獨立經濟體，多數 WDI 指標<b>沒有資料</b>，而是併入「全世界」與「高所得國家」的總計。這不是程式錯誤——可作為「資料可得性與資料政治性」的絕佳課堂討論素材。台灣官方數據請查行政院主計總處（DGBAS）。
+  </footer>
+
+</div>
+
+<script>
+const API = "https://api.worldbank.org/v2";
+// 備援：若直連被擋（例如某些網路環境），改走公開 CORS 代理重試
+const PROXIES = [
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+];
+let lastErrorDetail = "";
+
+// ---- KPI 指標定義（含中文教學說明）----
+const INDICATORS = {
+  "NY.GDP.MKTP.CD":{name:"GDP（現價美元）",unit:"美元",fmt:"big",
+    why:"衡量一個經濟體一年內生產的最終商品與服務總值，是規模型 KPI。<b>數字大不代表人民富裕</b>——要搭配人口一起看。",higherBetter:true},
+  "NY.GDP.PCAP.CD":{name:"人均 GDP（現價美元）",unit:"美元／人",fmt:"money",
+    why:"GDP 除以人口，是效率／富裕程度型 KPI。比總 GDP 更能反映平均生活水準，但仍隱藏「分配不均」的問題。",higherBetter:true},
+  "FP.CPI.TOTL.ZG":{name:"通貨膨脹率（消費者物價）",unit:"%",fmt:"pct",
+    why:"物價年增率。屬於「越穩越好」的 KPI——太高侵蝕購買力，<b>太低甚至負值（通縮）也是警訊</b>。健康區間常被視為約 2%。",higherBetter:null},
+  "SL.UEM.TOTL.ZS":{name:"失業率（占勞動力）",unit:"%",fmt:"pct",
+    why:"找不到工作者占勞動力的比例。屬於「越低越好」的 KPI，但極低也可能伴隨人力短缺與通膨壓力。",higherBetter:false},
+  "SP.DYN.LE00.IN":{name:"出生時平均餘命",unit:"歲",fmt:"num1",
+    why:"新生兒預期可活的年數，是衡量醫療與生活品質的綜合型 KPI，變化緩慢、適合看長期趨勢。",higherBetter:true},
+  "SP.POP.TOTL":{name:"總人口",unit:"人",fmt:"big",
+    why:"基礎規模指標。本身無「好壞」，但常作為其他 KPI 的分母（人均化），是理解比率型指標的關鍵。",higherBetter:null},
+};
+
+// ---- 國家（含台灣）----
+const COUNTRIES = {
+  "KOR":"南韓","SGP":"新加坡","JPN":"日本","USA":"美國","CHN":"中國",
+  "DEU":"德國","TWN":"台灣*","WLD":"全世界"
+};
+const PALETTE=["#1f6f6b","#b07a2c","#9b3b6e","#2c5d8f","#7a7d2c","#8a5a2b","#4a4e69","#444"];
+
+let selectedCountries = ["KOR","SGP","JPN","USA"];
+let selectedIndicator = "NY.GDP.PCAP.CD";
+let selectedIndicator2 = "SP.DYN.LE00.IN";   // 對照指標
+let focusYear = 2023;
+let lineChart, barChart, scatterChart, bubbleChart, growthChart, boxChart;
+const cache = {}; // key: ind|country -> {year:value}
+
+// 註冊盒鬚圖控制器（若 CDN 載入成功）
+try{ if(window.ChartBoxPlot){ Chart.register(ChartBoxPlot.BoxPlotController, ChartBoxPlot.BoxAndWiskers); } }catch(e){}
+
+// ---- 數字格式化 ----
+function fmtVal(v, kind){
+  if(v==null||isNaN(v)) return "—";
+  if(kind==="big"){
+    if(v>=1e12) return (v/1e12).toFixed(2)+" 兆";
+    if(v>=1e8)  return (v/1e8).toFixed(2)+" 億";
+    if(v>=1e4)  return (v/1e4).toFixed(1)+" 萬";
+    return v.toLocaleString();
+  }
+  if(kind==="money") return "$"+Math.round(v).toLocaleString();
+  if(kind==="pct")  return v.toFixed(1)+"%";
+  if(kind==="num1") return v.toFixed(1);
+  return v.toLocaleString();
+}
+
+// ---- 抓資料（瀏覽器端，含快取＋容錯＋代理備援）----
+async function tryFetch(url){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), 15000);
+  try{
+    const res = await fetch(url, {signal:ctrl.signal});
+    clearTimeout(timer);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    return await res.json();
+  }finally{ clearTimeout(timer); }
+}
+
+async function fetchSeries(ind, iso){
+  const key = ind+"|"+iso;
+  if(cache[key]) return {ok:true, map:cache[key]};
+  const url = `${API}/country/${iso}/indicator/${ind}?format=json&per_page=500&date=1990:2024`;
+
+  // 依序嘗試：直連 → 代理1 → 代理2
+  const attempts = [url, ...PROXIES.map(p=>p(url))];
+  let detail = "";
+  for(const target of attempts){
+    try{
+      const json = await tryFetch(target);
+      const map = {};
+      if(Array.isArray(json) && Array.isArray(json[1])){
+        for(const row of json[1]){
+          if(row && row.value!=null) map[+row.date]=row.value;
+        }
+      }
+      cache[key]=map;
+      return {ok:true, map};
+    }catch(e){
+      detail = e.name==="AbortError" ? "請求逾時（15 秒）" : (e.message||String(e));
+    }
+  }
+  lastErrorDetail = detail;
+  return {ok:false, map:{}};
+}
+
+// ---- UI 建構 ----
+function fillIndicatorOptions(sel, current){
+  for(const [code,info] of Object.entries(INDICATORS)){
+    const o=document.createElement("option");
+    o.value=code;o.textContent=info.name;sel.appendChild(o);
+  }
+  sel.value=current;
+}
+function buildIndicatorSelect(){
+  const sel=document.getElementById("indSel");
+  fillIndicatorOptions(sel, selectedIndicator);
+  sel.addEventListener("change",()=>{selectedIndicator=sel.value;render();});
+
+  const sel2=document.getElementById("indSel2");
+  fillIndicatorOptions(sel2, selectedIndicator2);
+  sel2.addEventListener("change",()=>{selectedIndicator2=sel2.value;render();});
+}
+function buildCountryChips(){
+  const box=document.getElementById("countryChips");
+  for(const [iso,name] of Object.entries(COUNTRIES)){
+    const c=document.createElement("div");
+    c.className="chip";c.textContent=name;c.dataset.iso=iso;
+    if(iso==="TWN") c.title="世界銀行 WDI 資料庫未將台灣列為獨立經濟體，多數指標無資料（併入『全世界』與『高所得國家』）。";
+    c.setAttribute("aria-pressed", selectedCountries.includes(iso));
+    c.onclick=()=>{
+      const i=selectedCountries.indexOf(iso);
+      if(i>=0){ if(selectedCountries.length>1) selectedCountries.splice(i,1); }
+      else selectedCountries.push(iso);
+      c.setAttribute("aria-pressed", selectedCountries.includes(iso));
+      render();
+    };
+    box.appendChild(c);
+  }
+}
+function buildYear(){
+  const r=document.getElementById("yearSel"), v=document.getElementById("yearVal");
+  r.value=focusYear; v.textContent=focusYear;
+  r.addEventListener("input",()=>{focusYear=+r.value;v.textContent=focusYear;renderFocus();});
+}
+
+// ---- 教學討論題（依指標動態）----
+const TEACH = {
+  "NY.GDP.MKTP.CD":["為什麼總 GDP 最大的國家，人民不一定最富裕？","如果一國 GDP 成長但人口成長更快，人均會怎樣？"],
+  "NY.GDP.PCAP.CD":["人均是『平均值』——它看不到什麼？想想中位數與分配。","用『現價美元』比較不同年份，匯率與通膨會造成什麼誤差？"],
+  "FP.CPI.TOTL.ZG":["為什麼通膨『太低』也不好？什麼是通縮的風險？","哪一年的折線出現尖峰？對照當時發生了什麼事件？"],
+  "SL.UEM.TOTL.ZS":["失業率低就一定好嗎？想想『缺工』與『過熱』。","這個 KPI 的『方向』是越低越好——還有哪些指標方向相反？"],
+  "SP.DYN.LE00.IN":["為什麼這條線變化得這麼平緩？適合做季度 KPI 嗎？","哪些國家差距正在縮小？這代表什麼發展趨勢？"],
+  "SP.POP.TOTL":["人口本身沒有好壞——它在儀表板裡扮演什麼角色（分母）？","若只看人口而忽略人均，會做出什麼錯誤決策？"],
+};
+function renderTeach(){
+  const info=INDICATORS[selectedIndicator];
+  const ul=document.getElementById("teachList");
+  const dir = info.higherBetter===true?"越高越好":info.higherBetter===false?"越低越好":"越穩定／需脈絡判讀";
+  const items=[`<span class="q">這個 KPI 的方向：</span>${dir}。判讀任何 KPI 的第一步，就是先問『往哪個方向才算好？』`,
+    ...(TEACH[selectedIndicator]||[]),
+    `<span class="q">圖表選擇：</span>看「隨時間變化」用折線、看「排名」用長條、看「兩指標關係」用散布圖。散布圖若呈一條斜線——這是<b>相關</b>，但能說是<b>因果</b>嗎？`,
+    `<span class="q">盒鬚圖：</span>同樣的平均值，分布可能天差地遠。盒鬚圖讓你看見中位數、四分位距與離群值——平均數藏起來的故事。`];
+  ul.innerHTML=items.flat().map(t=>`<li>${t}</li>`).join("");
+}
+
+// ---- 主渲染 ----
+async function render(){
+  const info=INDICATORS[selectedIndicator];
+  document.getElementById("meaning").innerHTML=`<b>${info.name}</b>　·　${info.why}`;
+  renderTeach();
+  setStatus(true,"正在向世界銀行 API 擷取資料…");
+
+  // 逐國抓取主要＋對照指標，互不影響
+  const inds = selectedIndicator2 && selectedIndicator2!==selectedIndicator
+             ? [selectedIndicator, selectedIndicator2] : [selectedIndicator];
+  const tasks = [];
+  selectedCountries.forEach(iso => inds.forEach(ind =>
+    tasks.push((async()=>({iso, ind, ...(await fetchSeries(ind, iso))}))())));
+  const results = await Promise.all(tasks);
+
+  // 以主要指標判斷成功與否
+  const primary = results.filter(r=>r.ind===selectedIndicator);
+  const failed = primary.filter(r=>!r.ok).map(r=>COUNTRIES[r.iso]);
+  const empty  = primary.filter(r=>r.ok && Object.keys(r.map).length===0).map(r=>COUNTRIES[r.iso]);
+
+  // 只要有任何一國成功就照常畫圖
+  renderLine();
+  renderFocus();
+
+  if(failed.length && failed.length===selectedCountries.length){
+    let hint = "";
+    if(location.protocol === "file:"){
+      hint = "偵測到你是用「直接開啟檔案」(file://) 的方式瀏覽，瀏覽器會封鎖對外連線。請改用以下任一方式："
+           + "①把檔案上傳到 Cloudflare Pages / GitHub Pages 後用網址開啟；"
+           + "②在檔案所在資料夾執行 <code>python3 -m http.server</code>，再開 <code>http://localhost:8000</code>。";
+    } else {
+      hint = "可能是網路或防火牆擋住了 api.worldbank.org，請換個網路後重試。";
+    }
+    setStatus(false, `所有國家都擷取失敗。${hint}<br><span style="opacity:.7">技術細節：${lastErrorDetail||"未知錯誤"}</span>`, true);
+  }else{
+    let msg=[];
+    if(failed.length) msg.push(`擷取失敗：${failed.join("、")}（可稍後重試）`);
+    if(empty.length)  msg.push(`此指標無資料：${empty.join("、")}`);
+    setStatus(false, msg.length?("⚠ "+msg.join("　|　")):"✓ 資料已載入（即時來自世界銀行）");
+  }
+}
+function renderFocus(){ renderCards(); renderBar(); renderScatter(); renderBubble(); renderGrowth(); renderBox(); }
+
+function setStatus(loading,msg,err){
+  const s=document.getElementById("status");
+  s.className="status"+(err?" err":"");
+  s.innerHTML=(loading?'<span class="loading"></span>':"")+msg;
+}
+
+function renderCards(){
+  const info=INDICATORS[selectedIndicator];
+  const box=document.getElementById("cards");box.innerHTML="";
+  selectedCountries.forEach((iso,i)=>{
+    const series=cache[selectedIndicator+"|"+iso]||{};
+    let val=series[focusYear], usedYear=focusYear;
+    // 若焦點年缺值，回退到最近一年
+    if(val==null){
+      const yrs=Object.keys(series).map(Number).filter(y=>y<=focusYear).sort((a,b)=>b-a);
+      if(yrs.length){usedYear=yrs[0];val=series[usedYear];}
+    }
+    const prev=series[usedYear-1];
+    let trend="flat",arrow="→",chg="";
+    if(val!=null&&prev!=null){
+      const d=(val-prev)/Math.abs(prev)*100;
+      if(d>0.05){trend="up";arrow="▲";} else if(d<-0.05){trend="down";arrow="▼";} 
+      chg=(d>0?"+":"")+d.toFixed(1)+"%";
+    }
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML=`
+      <div class="bar" style="background:${PALETTE[i%PALETTE.length]}"></div>
+      <div class="cflag">${COUNTRIES[iso]}${usedYear!==focusYear?` <span style="color:#b03a2e">(${usedYear})</span>`:""}</div>
+      <div class="cval">${fmtVal(val,info.fmt)}</div>
+      <div class="cunit">${info.unit}</div>
+      <div class="ctrend ${trend}">${arrow} ${chg||"無前一年資料"}<span style="font-weight:400;color:var(--muted)">　vs 前一年</span></div>`;
+    box.appendChild(card);
+  });
+}
+
+function renderLine(){
+  const info=INDICATORS[selectedIndicator];
+  const years=[];for(let y=2000;y<=2023;y++)years.push(y);
+  const datasets=selectedCountries.map((iso,i)=>{
+    const series=cache[selectedIndicator+"|"+iso]||{};
+    return {label:COUNTRIES[iso],
+      data:years.map(y=>series[y]??null),
+      borderColor:PALETTE[i%PALETTE.length],
+      backgroundColor:PALETTE[i%PALETTE.length],
+      tension:.25,spanGaps:true,pointRadius:0,pointHoverRadius:4,borderWidth:2.2};
+  });
+  if(lineChart)lineChart.destroy();
+  lineChart=new Chart(document.getElementById("lineChart"),{
+    type:"line",
+    data:{labels:years,datasets},
+    options:baseOpts(info,true)
+  });
+}
+
+function renderBar(){
+  const info=INDICATORS[selectedIndicator];
+  const rows=selectedCountries.map((iso,i)=>{
+    const series=cache[selectedIndicator+"|"+iso]||{};
+    let v=series[focusYear];
+    if(v==null){const yrs=Object.keys(series).map(Number).filter(y=>y<=focusYear).sort((a,b)=>b-a);if(yrs.length)v=series[yrs[0]];}
+    return {iso,name:COUNTRIES[iso],v:v??0,color:PALETTE[i%PALETTE.length]};
+  }).sort((a,b)=>b.v-a.v);
+  if(barChart)barChart.destroy();
+  barChart=new Chart(document.getElementById("barChart"),{
+    type:"bar",
+    data:{labels:rows.map(r=>r.name),
+      datasets:[{data:rows.map(r=>r.v),backgroundColor:rows.map(r=>r.color),borderRadius:5}]},
+    options:{...baseOpts(info,false),indexAxis:"y",plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>fmtVal(c.parsed.x,info.fmt)+" "+info.unit}}}}
+  });
+}
+
+// 取某國某指標在焦點年份的值（缺值則回退最近一年）
+function valAt(ind, iso, year){
+  const s=cache[ind+"|"+iso]||{};
+  if(s[year]!=null) return s[year];
+  const yrs=Object.keys(s).map(Number).filter(y=>y<=year).sort((a,b)=>b-a);
+  return yrs.length? s[yrs[0]] : null;
+}
+
+// 散布圖：主要指標(X) vs 對照指標(Y)，每國一點
+function renderScatter(){
+  const ix=INDICATORS[selectedIndicator], iy=INDICATORS[selectedIndicator2];
+  const pts=selectedCountries.map((iso,i)=>{
+    const x=valAt(selectedIndicator,iso,focusYear), y=valAt(selectedIndicator2,iso,focusYear);
+    return (x!=null&&y!=null)?{x,y,name:COUNTRIES[iso],color:PALETTE[i%PALETTE.length]}:null;
+  }).filter(Boolean);
+  if(scatterChart)scatterChart.destroy();
+  scatterChart=new Chart(document.getElementById("scatterChart"),{
+    type:"scatter",
+    data:{datasets:[{data:pts,
+      backgroundColor:pts.map(p=>p.color),pointRadius:7,pointHoverRadius:9}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{
+        const p=c.raw;return `${p.name}：${ix.name} ${fmtVal(p.x,ix.fmt)}／${iy.name} ${fmtVal(p.y,iy.fmt)}`;}}}},
+      scales:{
+        x:{title:{display:true,text:ix.name,font:{family:"Noto Sans TC"}},
+           ticks:{font:{family:"Noto Sans TC",size:11},callback:v=>fmtVal(v,ix.fmt)},grid:{color:"#e4ddcd"}},
+        y:{title:{display:true,text:iy.name,font:{family:"Noto Sans TC"}},
+           ticks:{font:{family:"Noto Sans TC",size:11},callback:v=>fmtVal(v,iy.fmt)},grid:{color:"#e4ddcd"}}
+      }}
+  });
+}
+
+// 泡泡圖：X=主要、Y=對照、泡泡大小=人口
+function renderBubble(){
+  const ix=INDICATORS[selectedIndicator], iy=INDICATORS[selectedIndicator2];
+  const pops=selectedCountries.map(iso=>valAt("SP.POP.TOTL",iso,focusYear)).filter(v=>v!=null);
+  const maxPop=Math.max(...pops,1);
+  const pts=selectedCountries.map((iso,i)=>{
+    const x=valAt(selectedIndicator,iso,focusYear), y=valAt(selectedIndicator2,iso,focusYear);
+    const pop=valAt("SP.POP.TOTL",iso,focusYear);
+    if(x==null||y==null) return null;
+    const r=pop!=null? 6+Math.sqrt(pop/maxPop)*34 : 8;
+    return {x,y,r,name:COUNTRIES[iso],pop,color:PALETTE[i%PALETTE.length]};
+  }).filter(Boolean);
+  if(bubbleChart)bubbleChart.destroy();
+  bubbleChart=new Chart(document.getElementById("bubbleChart"),{
+    type:"bubble",
+    data:{datasets:[{data:pts,
+      backgroundColor:pts.map(p=>p.color+"99"),borderColor:pts.map(p=>p.color),borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{
+        const p=c.raw;return `${p.name}　人口 ${fmtVal(p.pop,"big")}`;}}}},
+      scales:{
+        x:{title:{display:true,text:ix.name,font:{family:"Noto Sans TC"}},
+           ticks:{font:{family:"Noto Sans TC",size:11},callback:v=>fmtVal(v,ix.fmt)},grid:{color:"#e4ddcd"}},
+        y:{title:{display:true,text:iy.name,font:{family:"Noto Sans TC"}},
+           ticks:{font:{family:"Noto Sans TC",size:11},callback:v=>fmtVal(v,iy.fmt)},grid:{color:"#e4ddcd"}}
+      }}
+  });
+}
+
+// 年增率長條圖：焦點年 vs 前一年
+function renderGrowth(){
+  const info=INDICATORS[selectedIndicator];
+  const rows=selectedCountries.map((iso,i)=>{
+    const cur=valAt(selectedIndicator,iso,focusYear), prev=valAt(selectedIndicator,iso,focusYear-1);
+    const g=(cur!=null&&prev!=null&&prev!==0)?((cur-prev)/Math.abs(prev)*100):null;
+    return {name:COUNTRIES[iso],g,color:PALETTE[i%PALETTE.length]};
+  }).filter(r=>r.g!=null).sort((a,b)=>b.g-a.g);
+  if(growthChart)growthChart.destroy();
+  growthChart=new Chart(document.getElementById("growthChart"),{
+    type:"bar",
+    data:{labels:rows.map(r=>r.name),
+      datasets:[{data:rows.map(r=>r.g),
+        backgroundColor:rows.map(r=>r.g>=0?"#2f7d4f":"#b03a2e"),borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.parsed.y>=0?"+":"")+c.parsed.y.toFixed(1)+"%"}}},
+      scales:{
+        y:{title:{display:true,text:"年增率 (%)",font:{family:"Noto Sans TC"}},
+           ticks:{font:{family:"Noto Sans TC",size:11},callback:v=>v+"%"},grid:{color:"#e4ddcd"}},
+        x:{ticks:{font:{family:"Noto Sans TC",size:11}},grid:{display:false}}
+      }}
+  });
+}
+
+// 盒鬚圖：每國近 20 年數值分布
+function renderBox(){
+  const info=INDICATORS[selectedIndicator];
+  const box=document.getElementById("boxChart");
+  if(!window.ChartBoxPlot){
+    if(boxChart){boxChart.destroy();boxChart=null;}
+    const ctx=box.getContext("2d");ctx.clearRect(0,0,box.width,box.height);
+    ctx.font="13px 'Noto Sans TC'";ctx.fillStyle="#6b6557";ctx.textAlign="center";
+    ctx.fillText("盒鬚圖元件載入失敗（需要網路連線 CDN）",box.width/2,box.height/2);
+    return;
+  }
+  const labels=[], data=[], colors=[];
+  selectedCountries.forEach((iso,i)=>{
+    const s=cache[selectedIndicator+"|"+iso]||{};
+    const vals=Object.keys(s).map(Number).filter(y=>y>=2004&&y<=2023).map(y=>s[y]).filter(v=>v!=null);
+    if(vals.length>=4){labels.push(COUNTRIES[iso]);data.push(vals);colors.push(PALETTE[i%PALETTE.length]);}
+  });
+  if(boxChart)boxChart.destroy();
+  boxChart=new Chart(box,{
+    type:"boxplot",
+    data:{labels,datasets:[{data,
+      backgroundColor:colors.map(c=>c+"55"),borderColor:colors,borderWidth:1.5,
+      itemRadius:2,outlierBackgroundColor:"#b03a2e"}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{ticks:{font:{family:"Noto Sans TC",size:11},callback:v=>fmtVal(v,info.fmt)},grid:{color:"#e4ddcd"}},
+        x:{ticks:{font:{family:"Noto Sans TC",size:11}},grid:{display:false}}
+      }}
+  });
+}
+
+function baseOpts(info,isLine){
+  return {
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:"index",intersect:false},
+    plugins:{
+      legend:{display:isLine,position:"bottom",labels:{font:{family:"Noto Sans TC",size:12},boxWidth:14,usePointStyle:true}},
+      tooltip:{callbacks:{label:c=>`${c.dataset.label||""}: ${fmtVal(isLine?c.parsed.y:c.parsed.x,info.fmt)} ${info.unit}`}}
+    },
+    scales:{
+      [isLine?"y":"x"]:{ticks:{font:{family:"Noto Sans TC",size:11},
+        callback:v=>fmtVal(v,info.fmt)},grid:{color:"#e4ddcd"}},
+      [isLine?"x":"y"]:{ticks:{font:{family:"Noto Sans TC",size:11}},grid:{display:false}}
+    }
+  };
+}
+
+// ---- init ----
+buildIndicatorSelect();
+buildCountryChips();
+buildYear();
+render();
+</script>
+</body>
+</html>
